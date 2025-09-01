@@ -1,0 +1,540 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+## Loading the necessary packages
+```{r}
+#install the necessary packages
+packages <- c("tidyverse", "car", "dunn.test", "tableone", "dplyr", "Hmisc", "descr")
+```
+
+```{r}
+purrr::walk(packages, library, character.only = T)
+```
+
+```{r}
+library("tidyverse")
+library(readr)
+library("reshape2")
+library(ggplot2)
+library(car)
+library("dplyr")
+library("odds.n.ends")
+```
+**This is a data set used to predict heart disease. Patients were classified as having or not having heart disease based on cardiac catheterization, the gold standard. If they had more than 50% narrowing of a coronary artery they were labeled as having heart disease.The data set can be accessed through this link: https://data.world/informatics-edu/heart-disease-prediction/workspace/file?filename=Heart_Disease_Prediction.csv. It also provides the data dictionary that explains about each variable.**
+## Descriptive statistics for the data before recoding
+```{r}
+# reading the data file
+heart <- read.csv("Heart_Disease_Prediction.csv")
+summary(heart)
+```
+##Recoding the data using the data dictionary
+```{r}
+#re-coding 
+heart.cleaned <- heart %>%
+  mutate(Sex = recode_factor(.x = Sex, `1` = "Male",
+                                      `0` = "Female")) %>%
+  mutate(Chest.pain.type = recode_factor(.x = Chest.pain.type,`1` = "typical angina",
+                                             `2` = "atypical angina",
+                                             `3` = "non-anginal pain",
+                                             `4` = "asymptomatic")) %>%
+  mutate(FBS.over.120 = recode_factor(.x = FBS.over.120,`1` = "true",
+                                          `0` = "false")) %>%
+  mutate(EKG.results = recode_factor(.x = EKG.results, `0` = "normal",
+                                     `1` = "having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV)",
+                                         `2` = "showing probable or definite left ventricular hypertrophy")) %>%
+  mutate(Exercise.angina = recode_factor(.x = Exercise.angina, `1` = "yes",
+                                             `0` = "no")) %>%
+  mutate(Slope.of.ST = recode_factor(.x = Slope.of.ST, `1` = "upsloping",
+                                        `2` = "flat",
+                                        `3` = "downsloping")) %>%
+  mutate(Thallium = recode_factor(.x = Thallium, `3` = "normal",
+                           `6` = "fixed defect",
+                           `7` = "reversable defect")) %>%
+  mutate(Heart.Disease = recode_factor(.x = Heart.Disease,`0` = "< 50% diameter narrowing",
+                                `1` = "> 50% diameter narrowing")) 
+heart.cleaned
+```
+##Checking the descriptive statistics after recoding
+```{r}
+summary(heart.cleaned)
+```
+##Using graphs to examine the relationship between two categorical variables
+```{r}
+#barplot to show the percent of gender of individuals with and without heart disease 
+heart.sex.plot <- heart.cleaned %>%
+drop_na(Heart.Disease) %>%
+drop_na(Sex) %>%
+group_by(Heart.Disease, Sex) %>%
+count() %>%
+group_by(Sex) %>%
+mutate(perc = 100*n/sum(n)) %>%
+ggplot(aes(x = Sex, y = perc, fill = Heart.Disease)) +
+geom_bar(position = "dodge", stat = "identity") +
+theme_minimal() +
+scale_fill_manual(values = c("orange", "skyblue"),
+              name = "Heart disease") +
+labs(x = "Sex", y = "Percent within group",title = "Percentage of Gender Distribution by Heart Disease Status")
+heart.sex.plot
+```
+```{r}
+#box plot to see the distribution of bp and cholesterol for individuals with and without heart disease
+heart.cleaned <- heart.cleaned %>%
+  mutate(Age_Category = case_when(
+    Age < 40 ~ "Under 40",
+    Age >= 40 & Age < 50 ~ "40-49",
+    Age >= 50 & Age < 60 ~ "50-59",
+    Age >= 60 & Age < 70 ~ "60-69",
+    Age >= 70 & Age < 80 ~ "70-79",
+    Age >= 80 ~ "80 and above"
+  ))
+# Plot colorful boxplot
+heart.cleaned %>%
+  ggplot(aes(x = Age_Category, y = Cholesterol, fill = Heart.Disease)) +
+  geom_boxplot(alpha = 0.4) +
+  scale_fill_manual(values = c("deeppink", "skyblue"), name = "Heart Disease") +  
+  theme_minimal() +
+  labs(x = "Age Category", y = "Cholesterol", title = "Distribution of Cholesterol by Age Category and Heart Disease Status")
+```
+```{r}
+#barplot to show the percent of individuals with and without heart disease having fasting blood sugar over 120
+heart.diabetes.plot <- heart.cleaned %>%
+drop_na(Heart.Disease) %>%
+drop_na(FBS.over.120) %>%
+group_by(Heart.Disease, FBS.over.120) %>%
+count() %>%
+group_by(FBS.over.120) %>%
+mutate(perc = 100*n/sum(n)) %>%
+ggplot(aes(x = FBS.over.120, y = perc, fill = Heart.Disease)) +
+geom_bar(position = "dodge", stat = "identity") +
+theme_minimal() +
+scale_fill_manual(values = c("gray", "#7463AC"),
+              name = "Heart disease") +
+labs(x = "Fasting blood sugar over 120", y = "Percent within group", title = "Percentage of people with and without heart disease by fasting blood sugar over 120")
+heart.diabetes.plot
+```
+```{r}
+#violin plot to see the distribution of bp and cholesterol for individuals with and without heart disease
+heart.cleaned <- heart.cleaned %>%
+  mutate(BP_Category = case_when(
+   BP < 100 ~ "Under 100",
+    BP >= 100& BP < 120 ~ "100-119",
+    BP>= 120 & BP < 140 ~ "120-139",
+    BP >= 140 & BP < 160 ~ "140-159",
+    BP >= 160 & BP <180 ~ "160-179",
+    BP >= 180 ~ "180 and above"
+  ))
+heart.cleaned %>%
+  ggplot(aes(x = BP_Category, y = Cholesterol, fill = Heart.Disease)) +
+  geom_violin(alpha = 0.4) +
+  scale_fill_manual(values = c("pink", "lightgreen"), name = "Heart Disease") +  # Custom colors
+  theme_minimal() +
+  labs(x = "Blood Pressure Category", y = "Cholesterol",  title = "Distribution of Cholesterol by Blood Pressure Category and Heart Disease Status")
+```
+##Statistical significant tests for the outcome and predictor variables
+##1)Chi-squared test of independence
+**Descriptive statistics for two categorical variables**
+```{r}
+#descriptive statistics
+table(heart.disease=heart.cleaned$Heart.Disease,gender=heart.cleaned$Sex)
+```
+**H0: presence of heart disease is the same among both the sexes**
+**HA: presence of heart disease is not the same among both the sexes**
+```{r}
+#Chi-squared test of independence for the variables Heart disease and Sex
+chisq.test(x=heart.cleaned$Heart.Disease, y=heart.cleaned$Sex)
+```
+**p-value <0.05. Reject the null hypothesis and can conclude that the presence of heart disease is not the same among both the sexes.**
+```{r}
+#chi-squared examining the presence of heart disease and sex using standardized residuals
+CrossTable(heart.cleaned$Heart.Disease, heart.cleaned$Sex, expected = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE, chisq = TRUE, sresid = TRUE)
+```
+```{r}
+#calculating the effect size using cramer's V
+library("lsr")
+cramersV(x= heart.cleaned$Heart.Disease,
+         y= heart.cleaned$Sex)
+```
+**Small to Medium effect size. Although statistically significant, the relationship is weak to moderate.**
+**Assumptions**
+**The variable must be nominal or ordinal**
+- Sex is a categorical variable that typically has two categories:male and female. These categories are not inherently ordered, so sex meets the requirement of being nominal.Therefore, this assumption is met.
+**The expected values should be 5 or higher in at least 80% of groups**
+- All expected cells count are 5 or higher from the descriptive statistics table, In this example, there are 4 groups, so 80% of this would be 3.2 groups. Since there is no way to have .2 of a group, 3 or more of the groups should have expected values of 5 or more. None of the groups have expected values even close to 5; all are much higher. This assumption is met.
+**The observations must be independent**
+- The data collected contains independent observations-patients in a cohort study(not siblings or other related people and not the same people measured more than once), so this assumption is met.
+##2) Independent sample t-test
+**Understanding the relationship between one categorical variable and one continuous variable using histogram**
+```{r}
+heart.age.plot <- heart.cleaned %>%
+  ggplot(aes(x = Age,fill=Heart.Disease)) +
+  geom_histogram(color = "white") +
+  theme_minimal() +
+  labs(x = "Age", y = "Patients")
+heart.age.plot
+```
+**H0: There is no difference in the mean age between the people with and without heart disease in the united states.**
+**HA: There is a difference in the mean age between the people with and without heart disease in the united states.**
+```{r}
+#comparing the age for the presence and absence of heart disease using t-test
+t.test(formula=heart.cleaned$Age~ heart.cleaned$Heart.Disease)
+```
+**P-value <0.05. Reject the null hypothesis and can conclude that there is a statistically significant difference in the mean age between the people with and without heart disease in the united states.**
+```{r}
+#Density Plot of Age by Heart Disease Status
+hrt.age.plot <- heart.cleaned %>%
+  ggplot(aes(x = Age,
+        fill = Heart.Disease)) +
+  geom_density(alpha = .8) +
+  theme_minimal() +
+  labs(x = "Age", y = "Probability density", fill= "Heart disease", title = "Density Plot of Age by Heart Disease Status") +
+  scale_fill_manual(values = c('maroon', 'lavender'),
+            name = "Heart Disease") +
+  xlim(0,100) 
+hrt.age.plot
+```
+
+```{r}
+#calculating effectsize using cohensD
+lsr::cohensD(x=Age~Heart.Disease, data = heart.cleaned, method = "unequal")
+```
+**small to medium effect size**
+**Assumptions:**
+**Continuous variable and two independent groups**
+- Each patient's age is assumed to be independent of the age of other patients and also this variable is continuous. so the assumption is met.
+**Independent observations**
+- The data collected contains independent observations-patients in a cohort study (not siblings or other related people and not the same people measured more than once), so this assumption is met.
+**Normal distribution in each group**
+```{r}
+#checking the normality with the histogram
+heart.cleaned %>%
+  ggplot(aes(x=Age))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Age",
+       y="Frequency")
+```
+```{r}
+#Q-Q plot 
+heart.cleaned %>%
+  drop_na(Age) %>%
+  ggplot(aes(sample = Age))+
+  stat_qq(aes(color = "Frequency of Age groups", alpha = .6)) +
+  facet_grid(cols = vars(Heart.Disease)) +
+  geom_abline(aes(intercept = mean(x= Age),
+                  slope = sd(x=Age), linetype= "Normally distributed"),
+              color="gray", size=1)+
+  theme_minimal()+
+  labs(x="theoretical normal distribution", y="Observed age")
+```
+**There is near to perfect normality with some deviations so,the  Normality assumption is failed**
+**Equal variances**
+```{r}
+#homogeneity of variance
+car::leveneTest(y= Age~Heart.Disease, data=heart.cleaned)
+```
+**equal variance assumption is not met**
+##Alternative test to independent sample t-test
+**H0: There is no difference in the ranked age values for individuals with and without heart disease in the United states.**
+**HA: There is a difference in the ranked age values for individuals with and without heart disease in the United states.**
+```{r}
+#Wilcoxon rank sum test as an alternate test
+wilcox.test(formula=heart.cleaned$Age~heart.cleaned$Heart.Disease, paired = FALSE)
+```
+**p-value< 0.05 so, reject the null hypothesis. And conclude that there is a difference in the ranked age values for individuals with and without heart disease in the United states.**
+##3)Chi-squared test of independence for heart disease and blood sugar variables
+**Descriptive statistics for two categorical variables**
+```{r}
+#Descriptive statistics
+table(heart.disease=heart.cleaned$Heart.Disease,fasting.blood.sugar.over.120=heart.cleaned$FBS.over.120)
+```
+**H0: presence of heart disease is the same among the groups with blood sugar levels over and less than 120** 
+**HA: presence of heart disease is not the same among the groups with blood sugar levels over and less than 120**
+```{r}
+#Chi-squared test of independence for the variables Heart disease and fasting blood sugar over 120
+chisq.test(x=heart.cleaned$Heart.Disease, y=heart.cleaned$FBS.over.120)
+```
+**P-value > 0.05. Accept the null hypothesis and conclude that the presence of heart disease is the same among the groups with blood sugar levels over and less than 120**
+```{r}
+#chi-squared examining the presence of heart disease and Fasting Blood Sugar using standardized residuals
+CrossTable(heart.cleaned$Heart.Disease, heart.cleaned$FBS.over.120, expected = TRUE, prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE, chisq = TRUE, sresid = TRUE)
+```
+```{r}
+#calculating the effect size using cramer's V
+library("lsr")
+cramersV(x= heart.cleaned$Heart.Disease,
+         y= heart.cleaned$FBS.over.120)
+```
+**small or weak effect size**
+**Not statisticlly significant with weak association**
+**Assumptions**
+**The variable must be nominal or ordinal**
+- Fasting blood sugar over 120 is a categorical variable with :True and False. These categories are not inherently ordered, so this variable meets the requirement of being nominal.Therefore, this assumption is met.
+**The expected values should be 5 or higher in at least 80% of groups**
+- All expected cells count are 5 or higher from the descriptive statistics table, In this example, there are 4 groups, so 80% of this would be 3.2 groups. Since there is no way to have .2 of a group, 3 or more of the groups should have expected values of 5 or more. None of the groups have expected values even close to 5; all are much higher. This assumption is met.
+**The observations must be independent**
+- The data collected contains independent observations-patients in a cohort study(not siblings or other related people and not the same people measured more than once), so this assumption is met.
+##4)Independent sample t-test for the heart disease and Blood pressure variables
+**Understanding the relationship between one categorical variable and one continuous variable using histogram**
+```{r}
+heart.bp.plot <- heart.cleaned %>%
+  ggplot(aes(x = BP,fill=Heart.Disease)) +
+  geom_histogram(color = "white") +
+  theme_minimal() +
+  labs(x = "Blood pressure", y = "Patients")
+heart.bp.plot
+```
+**H0: There is no difference in the mean blood pressure level between presence and absence of heart disease in the United states.**
+**HA: There is a difference in the mean blood pressure level between presence and absence of heart disease in the United states**
+```{r}
+#comparing the Blood Pressure levels for the presence and absence of heart disease using t-test
+t.test(formula=heart.cleaned$BP~ heart.cleaned$Heart.Disease)
+```
+**p-value<0.05. Reject the null hypothesis and conclude that there is no difference in the mean blood pressure level between presence and absence of heart disease in the United states.**
+```{r}
+hrt.bp.plot <- heart.cleaned %>%
+ggplot(aes(x = BP,
+        fill = Heart.Disease)) +
+geom_density(alpha = .8) +
+theme_minimal() +
+labs(x = "BP", y = "Probability density") +
+scale_fill_manual(values = c('gray', '#7463AC'),
+            name = "Heart Disease")
+hrt.bp.plot
+```
+```{r}
+#Effect size
+lsr::cohensD(x=BP~Heart.Disease, data = heart.cleaned, method = "unequal")
+```
+**small effect size**
+**Assumptions:**
+**Continuous variable and two independent groups**
+- Each patient's blood pressure measurement is assumed to be independent of the blood pressure measurements of other patients and also this variable is continuous. so the assumption is met.
+**Independent observations**
+- The data collected contains independent observations-patients in a cohort study(not siblings or other related people and not the same people measured more than once), so this assumption is met.
+**Normal distribution in each group**
+```{r}
+#normality distribution
+heart.cleaned %>%
+  ggplot(aes(x=BP))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="BP",
+       y="Frequency")
+```
+```{r}
+#Q-Q plot
+heart.cleaned %>%
+  drop_na(BP) %>%
+  ggplot(aes(sample = BP))+
+  stat_qq(aes(color = "Frequency of BP", alpha = .6)) +
+  facet_grid(cols = vars(Heart.Disease)) +
+  geom_abline(aes(intercept = mean(x= BP),
+                  slope = sd(x=BP), linetype= "Normally distributed"),
+              color="gray", size=1)+
+  theme_minimal()+
+  labs(x="theoretical normal distribution", y="Observed BP")
+```
+**approximate normal distribution with slight deviations so, the normality assumption is failed**
+**Equal variances for each group**
+```{r}
+#homogeneity of variance
+car::leveneTest(y= BP~Heart.Disease, data=heart.cleaned)
+```
+**The homogeneity of variance assumption is met**
+##Alternative test to independent sample t-test
+**H0: There is no difference in the ranked blood pressure values for individuals with and without heart disease in the United states.**
+**HA: There is a difference in the ranked blood pressure values for individuals with and without heart disease in the United states.**
+```{r}
+#Wilcoxon test as an alternate test
+wilcox.test(formula=heart.cleaned$BP~heart.cleaned$Heart.Disease, paired = FALSE)
+```
+**p-value< 0.05.Reject the null hypothesis so we can conclude that there is a difference in the ranked blood pressure values for individuals with and without heart disease in the United states.**
+##5)Independent sample t-test for the heart disease and Cholesterol level variables
+**Understanding the relationship between one categorical variable and one continuous variable using histogram**
+```{r}
+heart.chol.plot <- heart.cleaned %>%
+  ggplot(aes(x = Cholesterol,fill=Heart.Disease)) +
+  geom_histogram(color = "white") +
+  theme_minimal() +
+  labs(x = "Cholesterol", y = "Patients") 
+heart.chol.plot
+```
+**H0: There is no difference in the mean cholesterol level between the people with and without the heart disease in the United states.**
+**HA: There is a difference in the mean cholesterol level between the people with and without the heart disease in the United states.**
+```{r}
+#comparing the cholesterol levels for the presence and absence of heart disease using t-test
+t.test(formula=heart.cleaned$Cholesterol~ heart.cleaned$Heart.Disease)
+```
+**p-value=0.05. Reject the null hypothesis and conclude that there is a difference in the mean cholesterol level between the patients with and without heart disease in the United states.**
+```{r}
+#
+hrt.ldl.plot <- heart.cleaned %>%
+ggplot(aes(x = Cholesterol,
+        fill = Heart.Disease)) +
+geom_density(alpha = .8) +
+theme_minimal() +
+labs(x = "Cholesterol", y = "Probability density") +
+scale_fill_manual(values = c('gray', '#7463AC'),
+            name = "Heart Disease")
+hrt.ldl.plot
+```
+```{r}
+#Effect size calculation
+lsr::cohensD(x=Cholesterol~Heart.Disease, data = heart.cleaned, method = "unequal")
+```
+**Small effect size**
+**Assumptions:**
+**Continuous variable and two independent groups**
+- Each patient's cholesterol measurement is assumed to be independent of the cholesterol measurements of other patients and also this variable is continuous. so the assumption is met.
+**Independent observations**
+- The data collected contains independent observations-patients in a cohort study(not siblings or other related people and not the same people measured more than once), so this assumption is met.
+**Normal distribution in each group**
+```{r}
+#Normality histogram
+heart.cleaned %>%
+  ggplot(aes(x=Cholesterol))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Cholesterol",
+       y="Frequency")
+```
+```{r}
+#Q-Q plot
+heart.cleaned %>%
+  drop_na(Cholesterol) %>%
+  ggplot(aes(sample = BP))+
+  stat_qq(aes(color = "Frequency of Cholesterol", alpha = .6)) +
+  facet_grid(cols = vars(Heart.Disease)) +
+  geom_abline(aes(intercept = mean(x= Cholesterol),
+                  slope = sd(x=Cholesterol), linetype= "Normally distributed"),
+              color="gray", size=1)+
+  theme_minimal()+
+  labs(x="theoretical normal distribution", y="Observed Cholesterol")
+```
+**the normality assumption is failed**
+**Assumption:Equal variance**
+```{r}
+car::leveneTest(y= Cholesterol~Heart.Disease, data=heart.cleaned)
+```
+**the equal variance assumption is met**
+##Alternative test to independent sample t-test: Wilcoxon rank-sum test
+**H0: There is no difference in the ranked cholesterol values for individuals with and without heart disease in the United states.**
+**HA: There is a difference in the ranked cholesterol values for individuals with and without heart disease in the United states.**
+```{r}
+#Wilcocxon rank sum test as an alternate test
+wilcox.test(formula=heart.cleaned$Cholesterol~heart.cleaned$Heart.Disease, paired = FALSE)
+```
+**p-value < 0.05.so, reject the null hypothesis and conclude that there is a difference in the ranked cholesterol values for individuals with and without heart disease in the United states.**
+##6)Logistic regression model for the variables
+```{r}
+table.heart <- CreateTableOne(data = heart.cleaned, strata = "Heart.Disease", vars = c("Age", "Sex", "BP", "Cholesterol", "FBS.over.120"))
+```
+
+```{r}
+print(table.heart, nonnormal = 'age', showAllLevels = TRUE)
+```
+```{r}
+##logistic regression model
+heart.model <- glm(formula = Heart.Disease ~ Age + Sex + BP + Cholesterol + FBS.over.120, data = heart.cleaned, na.action = na.exclude, family=binomial("logit") )
+odds.n.ends(heart.model)
+```
+**72% sensitivity and 60% specificity**
+**Model significance and model fit**
+```{r}
+#variance influential model
+car::vif(mod = heart.model)
+```
+**None is >2.5, so its met.**
+```{r}
+#transformations
+#cube root
+cube.root.cholesterol <- heart.cleaned%>%
+  ggplot(aes(x=(Cholesterol)^(1/3)))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Cube root of cholesterol",
+       y="Frequency")
+#square root
+square.root.cholesterol <- heart.cleaned%>%
+  ggplot(aes(x=(Cholesterol)^(1/2)))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Square root of cholesterol",
+       y="Frequency")
+#inverse 
+inverse.cholesterol <- heart.cleaned%>%
+  ggplot(aes(x=1/(Cholesterol)))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Inverse of cholesterol",
+       y="Frequency")
+#log
+log.cholesterol <- heart.cleaned%>%
+  ggplot(aes(x=log(Cholesterol)))+
+  geom_histogram(fill ="#7463AC", col = "white")+
+  facet_grid(cols=vars(Heart.Disease))+
+  theme_minimal()+
+  labs(x="Log of cholesterol",
+       y="Frequency")
+gridExtra::grid.arrange(cube.root.cholesterol,square.root.cholesterol,inverse.cholesterol,log.cholesterol)
+```
+
+```{r}
+#square root transforming 
+heart.cleaned <- heart.cleaned %>%
+  mutate(sqrt.cholesterol =  Cholesterol^(1/2))
+```
+
+```{r}
+table.heart <- CreateTableOne(data = heart.cleaned, strata = "Heart.Disease", vars = c("Age","Sex", "BP", "Cholesterol", "FBS.over.120", "sqrt.cholesterol"))
+```
+
+```{r}
+print(table.heart, nonnormal = 'age', showAllLevels = TRUE)
+```
+
+```{r}
+#model with transformed variable
+heart.model <- glm(formula = Heart.Disease ~ Age + Sex + BP + sqrt.cholesterol + FBS.over.120, data = heart.cleaned, na.action = na.exclude, family=binomial("logit"))
+odds.n.ends(heart.model)
+```
+**Model fit**
+- The logistic regression model correctly predicted 67.04% of observations, with a sensitivity of 72% and a specificity of 60.83%. This indicates that the model is reasonably effective in classifying individuals as individuals with and without heart disease.
+
+**Model significance**
+- Age: For every 1-year increase in age, the odds of heart disease decrease by approximately 5.37% (OR = 0.946; 95% CI: 0.915–0.977).
+- Sex (Female): Females have approximately 6.78 times higher odds of heart disease compared to males (OR = 6.78; 95% CI: 3.54–13.72).
+- BP: For every unit increase in blood pressure, the odds of heart disease decrease by approximately 1.62% (OR = 0.984; 95% CI: 0.968–0.100).
+- Square Root of Cholesterol: For every unit increase in the square root of cholesterol, the odds of heart disease decrease by approximately 19.40% (OR = 0.806; 95% CI: 0.671–0.961).
+- FBS Over 120 (False): Individuals with fasting blood sugar under 120 have approximately 1.63 times higher odds of heart disease compared to those with fasting blood sugar over 120 (OR = 1.63; 95% CI: 0.29–1.29). However, the confidence interval includes 1, indicating that this association is not statistically significant.
+```{r}
+# make a variable of the log-odds of the outcome
+logit.use.int <- log(heart.model$fitted.values/(1-heart.model$fitted.values))
+# make a small data frame with the log-odds variable and the age predictor
+linearity.data.int <- data.frame(logit.use.int, age.int = heart.model$model$Age)
+# create a plot (Figure 10.14)
+linearity.data.int %>%
+ggplot(aes(x = age.int, y = logit.use.int))+
+geom_point(aes(size = "Observation"), color = "gray", alpha = .6) +
+geom_smooth(se = FALSE, aes(color = "Loess curve")) +
+geom_smooth(method = lm, se = FALSE, aes(color = "linear model")) +
+scale_color_manual(name = "Type of fit line",
+           values = c("dodgerblue2", "deeppink")) +
+scale_size_manual(values = 1.5, name = "") +
+theme_minimal() +
+labs(x = "Age in years",
+    y = "Log-odds of Heart diseae probability")
+```
+
+```{r}
+#rm(list = ls())
+```
+
+
