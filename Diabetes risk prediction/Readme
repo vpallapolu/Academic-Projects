@@ -1,0 +1,5 @@
+This project focuses on predicting Type 2 Diabetes using machine learning algorithms applied to a clinical dataset containing patient attributes such as A1c levels, age, weight, blood pressure, and cholesterol metrics. 
+The analysis involved feature selection based on correlation insights, followed by exploratory data analysis through visualizations like scatter plots, histograms, and boxplots. 
+Multiple supervised learning models—including Logistic Regression, K-Nearest Neighbors (KNN), Naive Bayes, Support Vector Machines (SVM) with various kernels, and Random Forest—were implemented and evaluated using metrics such as accuracy, precision, recall, F1-score, and confusion matrices. 
+The Random Forest classifier achieved the highest accuracy (99.12%) with excellent precision and recall, making it the most effective model for this dataset. 
+The project demonstrates end-to-end data preprocessing, model training, performance comparison, and interpretation, offering insights into key predictors like A1c, age, and weight for diabetes risk.
