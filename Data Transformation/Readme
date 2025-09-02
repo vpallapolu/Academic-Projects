@@ -1,0 +1,8 @@
+This project demonstrates a comprehensive data transformation process on a US demographics dataset using Python and the Pandas library. 
+The primary goal is to clean and organize the raw data, making it suitable for accurate analysis and modeling.
+The procedure begins with loading the dataset and dropping unnecessary columns to streamline the information. 
+Columns are then renamed for clarity, and data types are downcast (e.g., float64 to float32) to optimize memory usage from 466kb to 306kb. 
+The transformation also includes checking for null values, removing duplicate entries, and cleaning whitespaces from text fields. 
+Additionally, two age-related columns are merged into a single, more descriptive column.
+A key step involves identifying and removing outliers from numerical columns like population size and poverty rate using the Z-score method. 
+This cleaning reduces the dataset from 3141 to 3045 rows, resulting in a high-quality dataset ready for analysis.
