@@ -1,0 +1,8 @@
+This project details an Exploratory Data Analysis (EDA) of a US demographics dataset using Python libraries like Pandas and Matplotlib. 
+The primary goal is to clean, visualize, and understand the data to identify patterns, trends, and outliers related to population characteristics across states and counties.
+The process begins with loading the dataset and using descriptive functions like .info() and .describe() to explore its initial structure. 
+Data cleaning involves dropping irrelevant columns and checking for null values, though the dataset was found to have no missing entries.
+Various visualizations, including histograms, boxplots, and scatter plots, are created to analyze distributions and relationships. 
+For example, histograms revealed that Nebraska has many counties with high poverty and low population. 
+Boxplots helped identify outliers and understand the data spread for variables like age groups and racial demographics. 
+This EDA successfully highlights key socioeconomic characteristics, preparing the dataset for more advanced analysis.
