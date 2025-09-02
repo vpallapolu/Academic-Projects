@@ -1,0 +1,6 @@
+This project analyzes California hospital discharge and readmission data from 2018 to identify key healthcare utilization patterns. 
+By integrating four public datasets, the study examines inpatient visits, discharges by diagnosis, county population, and 30-day readmission rates.
+Key findings reveal that older adults (70-89) are the primary users of facility-based hospice, with neoplasms and respiratory diseases being common diagnoses. 
+The analysis identifies Medicare patients as having the highest readmission rates. Furthermore, a positive correlation was observed between a county's population and the demand for home-based hospice services. 
+While discharges generally align with population size, some counties exhibit disproportionately high readmission rates.
+Ultimately, the analysis pinpoints opportunities to reduce hospital readmissions by targeting specific demographics and supporting high-risk counties.
