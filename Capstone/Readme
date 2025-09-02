@@ -1,0 +1,5 @@
+This project focuses on analyzing the Drugs.com dataset to uncover relationships between drugs, side effects, and medical conditions using advanced Natural Language Processing (NLP) techniques and machine learning models. 
+The workflow included data cleaning, Named Language Processing (NLP) using scispaCy to extract drug-related entities, and topic modeling using Non-Negative Matrix Factorization (NMF) to identify key themes from patient reviews. 
+The project leveraged Python with libraries such as Pandas, Scikit-learn, and ScispaCy, alongside visualization tools like Matplotlib and Seaborn. 
+Findings revealed meaningful patterns in drug-side effect associations and patient concerns, providing actionable insights that can support pharmacovigilance and enhance patient safety in healthcare.
+Additionally, an interactive Streamlit-based web application was built to provide users with functionalities such as data exploration, visualization, and drug review insights, making the results accessible in real time.
