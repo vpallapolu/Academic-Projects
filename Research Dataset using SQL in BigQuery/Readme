@@ -1,0 +1,7 @@
+This project details the creation of a comprehensive research dataset to analyze factors influencing health insurance coverage in the U.S. 
+It integrates seven public datasets covering key domains like demographics, poverty, income, unemployment, health status, and Medicaid/CHIP enrollment. 
+Using SQL queries on the Google BigQuery platform, these sources were joined to build a single, structured dataset for analysis.
+The final dataset is 21.2 GB and contains 34 columns with state and county-level information on population, poverty rates, and uninsured numbers by age and gender. 
+It is designed for policy analysis and comparative research to evaluate healthcare initiatives and identify vulnerable populations.
+The project concludes that socioeconomic status is a significant determinant of healthcare access. 
+This new dataset provides a strong evidence-based foundation for policymakers to develop targeted interventions, reduce health inequities, and improve public health outcomes.
