@@ -1,0 +1,7 @@
+This research project investigates the association between cardiovascular disease and five key risk factors: gender, age, blood pressure, cholesterol, and diabetes. 
+Using a heart disease prediction dataset, the study employs Chi-square and t-tests to analyze each factor's significance. 
+The results show a significant relationship between heart disease and gender, age, and blood pressure. 
+Males exhibited a higher prevalence of heart disease, and the average age and blood pressure were significantly higher in individuals with the condition. 
+Conversely, the study found no statistically significant link between heart disease and either cholesterol levels or high fasting blood sugar (diabetes). 
+A final logistic regression model confirmed that age, sex, and blood pressure combined were the strongest predictors. 
+The research underscores the importance of these three factors in risk assessment and creating targeted preventative strategies. 
